@@ -1,0 +1,43 @@
+Production Model Training Log
+============================
+
+Run: 20260723T122145Z-sepconv-1279-real-ft
+Training type: fine-tune on real Poketwo images
+Classes: 1,279
+Training images: 73,878
+Validation images: 17,659
+Input: 64x64 RGB
+Batch size: 128
+Maximum epochs: 12
+Learning rate: 1e-5, reduced during training
+Label smoothing: 0.1
+Oversampling: disabled
+Augmentation: disabled
+Trainable layers: final separable convolution and hidden dense layer
+TensorFlow: 2.10.0
+
+Epoch  Loss    Accuracy  Top-5     Val loss  Val accuracy  Val top-5
+-----  ------  --------  --------  --------  ------------  ---------
+1      1.1704  0.99373   0.99988   1.11785   0.99462       0.99870
+2      1.1677  0.99396   0.99991   1.11461   0.99451       0.99870
+3      1.1666  0.99417   0.99993   1.11423   0.99439       0.99870
+4      1.1650  0.99406   0.99991   1.11490   0.99462       0.99870
+5      1.1648  0.99383   0.99996   1.11541   0.99462       0.99870
+6      1.1641  0.99387   0.99993   1.11312   0.99456       0.99870
+7      1.1638  0.99414   0.99995   1.11363   0.99451       0.99870
+8      1.1637  0.99411   0.99996   1.11316   0.99451       0.99870
+9      1.1629  0.99391   0.99997   1.11291   0.99451       0.99870
+10     1.1635  0.99413   0.99999   1.11289   0.99451       0.99870
+11     1.1628  0.99422   0.99997   1.11275   0.99451       0.99870
+12     1.1627  0.99418   0.99997   1.11295   0.99451       0.99870
+
+The checkpoint with the lowest validation loss was saved from epoch 11.
+
+Final checkpoint: model/h5/best_model.h5
+SHA-256: b49e33c3864bb4d3738ee49ef6aefa2f9a90499070b476c545d19ed38c02d2d0
+Validation accuracy: 0.99451
+Validation top-5 accuracy: 0.99870
+
+The validation split has no images for Galarian Articuno, Galarian Zapdos,
+MissingNo, Regieleki, Scolipede, Type Null, or Xurkitree. The training split
+has no images for Type Null.

@@ -1,0 +1,20 @@
+# Normalize text files to LF in the repository and on checkout.
+* text=auto eol=lf
+
+*.py text eol=lf
+*.md text eol=lf
+*.json text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.txt text eol=lf
+*.toml text eol=lf
+
+# Explicitly mark binaries so auto-detection cannot corrupt them.
+*.bin binary
+*.h5 binary
+*.zip binary
+*.jpg binary
+*.jpeg binary
+*.png binary
+*.gif binary
+*.ico binary

@@ -1,0 +1,10 @@
+__pycache__/
+*.py[cod]
+*.tmp
+
+.venv/
+venv/
+
+datasets/catchtwo-dataset-100/
+datasets/catchtwo-dataset-validation/
+.ruff_cache/

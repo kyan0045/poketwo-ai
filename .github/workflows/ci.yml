@@ -1,4 +1,4 @@
-name: Format
+name: CI
 
 on:
   push:
@@ -6,10 +6,15 @@ on:
   workflow_dispatch:
 
 jobs:
-  python-format:
+  python-lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/ruff-action@v3
         with:
+          version: "0.17.1"
+          args: check training
+      - uses: astral-sh/ruff-action@v3
+        with:
+          version: "0.17.1"
           args: format --check training

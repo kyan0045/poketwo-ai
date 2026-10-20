@@ -4,7 +4,6 @@ import tensorflow as tf
 
 from model_registry import collect_labeled_images
 
-
 IMAGE_SIZE = 64
 ALIASES = {"Mime Jr.": "Mime Jr", "Mime Jr_": "Mime Jr", "MissingNo.": "MissingNo"}
 

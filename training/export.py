@@ -85,7 +85,7 @@ def main():
     args = parse_args()
     run_directory = args.run.resolve()
     manifest_path = run_directory / "manifest.json"
-    with open(manifest_path, "r", encoding="utf-8") as file:
+    with open(manifest_path, encoding="utf-8") as file:
         manifest = json.load(file)
 
     checkpoint = run_directory / manifest["checkpoint"]
@@ -124,7 +124,7 @@ def main():
         if result.returncode != 0:
             raise RuntimeError(f"TFJS conversion failed:\n{result.stderr}")
 
-        with open(temporary_output / "model.json", "r", encoding="utf-8") as file:
+        with open(temporary_output / "model.json", encoding="utf-8") as file:
             model_json = json.load(file)
         if model_json.get("format") != "layers-model":
             raise ValueError(

@@ -3,7 +3,6 @@ import json
 import os
 from pathlib import Path
 
-
 IMAGE_EXTENSIONS = (".jpg", ".jpeg", ".png")
 SCHEMA_VERSION = 1
 

@@ -1,5 +1,4 @@
 import argparse
-import os
 import random
 from datetime import datetime, timezone
 from pathlib import Path
@@ -16,7 +15,6 @@ from model_registry import (
     sha256_file,
     write_json,
 )
-
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 DEFAULT_LABELS = (

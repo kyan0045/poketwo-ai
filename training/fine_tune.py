@@ -1,6 +1,5 @@
 import argparse
 import json
-import os
 import random
 import shutil
 from datetime import datetime, timezone
@@ -9,7 +8,7 @@ from pathlib import Path
 import numpy as np
 import tensorflow as tf
 
-from data_loader import ALIASES, load_split, make_dataset, oversample
+from data_loader import load_split, make_dataset, oversample
 from model_registry import (
     SCHEMA_VERSION,
     labels_sha256,
@@ -17,7 +16,6 @@ from model_registry import (
     sha256_file,
     write_json,
 )
-
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 DEFAULT_PARENT_RUN = (
@@ -29,32 +27,50 @@ DEFAULT_RUNS_DIR = SCRIPT_DIR / "models" / "runs"
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Fine-tune the published model.")
+    parser = argparse.ArgumentParser(
+        description=(
+            "Fine-tune the published model. Defaults match the production run "
+            "20260723T122145Z-sepconv-1279-real-ft."
+        )
+    )
     parser.add_argument("--parent-run", type=Path, default=DEFAULT_PARENT_RUN)
     parser.add_argument("--train-dir", type=Path, default=DEFAULT_TRAIN_DIR)
     parser.add_argument("--validation-dir", type=Path, default=DEFAULT_VALIDATION_DIR)
     parser.add_argument("--runs-dir", type=Path, default=DEFAULT_RUNS_DIR)
     parser.add_argument("--run-id")
-    parser.add_argument("--epochs", type=int, default=25)
+    parser.add_argument("--epochs", type=int, default=12)
     parser.add_argument("--batch-size", type=int, default=128)
-    parser.add_argument("--learning-rate", type=float, default=3e-5)
-    parser.add_argument("--label-smoothing", type=float, default=0.05)
+    parser.add_argument("--learning-rate", type=float, default=1e-5)
+    parser.add_argument("--label-smoothing", type=float, default=0.1)
     parser.add_argument("--seed", type=int, default=20260723)
     parser.add_argument("--target-images-per-class", type=int, default=100)
     parser.add_argument("--min-delta", type=float, default=1e-4)
     parser.add_argument("--patience", type=int, default=4)
+    parser.add_argument("--lr-factor", type=float, default=0.3)
+    parser.add_argument("--lr-patience", type=int, default=4)
+    parser.add_argument("--min-learning-rate", type=float, default=1e-6)
     parser.add_argument(
-        "--no-augmentation", dest="augmentation", action="store_false", default=True
+        "--augmentation",
+        dest="augmentation",
+        action="store_true",
+        default=False,
+        help="Enable training-time image augmentation (off in the production run).",
     )
     parser.add_argument(
-        "--no-oversampling", dest="oversampling", action="store_false", default=True
+        "--oversampling",
+        dest="oversampling",
+        action="store_true",
+        default=False,
+        help="Oversample rare classes (off in the production run).",
     )
     return parser.parse_args()
 
 
 def configure_trainable_layers(model):
-    for layer in model.layers:
-        layer.trainable = False
+    # The production run froze everything except the final separable
+    # convolution and the hidden Dense layer (the output Dense and all
+    # BatchNormalization layers stayed frozen). Keep that selection so the
+    # defaults reproduce the shipped checkpoint's setup.
     separable = [
         layer
         for layer in model.layers
@@ -63,21 +79,15 @@ def configure_trainable_layers(model):
     dense = [
         layer for layer in model.layers if isinstance(layer, tf.keras.layers.Dense)
     ]
-    if len(separable) < 2 or len(dense) < 2:
+    if not separable or len(dense) < 2:
         raise ValueError(
-            "Expected a separable convolutional model with two Dense layers"
+            "Expected a separable convolutional model with a hidden "
+            "and output Dense layer"
         )
-    for layer in separable[-2:] + dense[-2:]:
-        layer.trainable = True
+    trainable_names = {separable[-1].name, dense[-2].name}
     for layer in model.layers:
-        if isinstance(layer, tf.keras.layers.BatchNormalization):
-            layer.trainable = True
+        layer.trainable = layer.name in trainable_names
     return [layer.name for layer in model.layers if layer.trainable]
-
-
-def make_optimizer(learning_rate, steps):
-    schedule = tf.keras.optimizers.schedules.CosineDecay(learning_rate, max(1, steps))
-    return tf.keras.optimizers.Adam(learning_rate=schedule)
 
 
 class BestCheckpoint(tf.keras.callbacks.Callback):
@@ -158,12 +168,8 @@ def main():
     val_data = make_dataset(
         val_paths, val_labels, len(classes), args.batch_size, False, args.seed, False
     )
-    steps = (
-        max(1, (len(train_paths) + args.batch_size - 1) // args.batch_size)
-        * args.epochs
-    )
     model.compile(
-        optimizer=make_optimizer(args.learning_rate, steps),
+        optimizer=tf.keras.optimizers.Adam(learning_rate=args.learning_rate),
         loss=loss,
         metrics=[
             "accuracy",
@@ -205,6 +211,12 @@ def main():
             "epochs": args.epochs,
             "batch_size": args.batch_size,
             "learning_rate": args.learning_rate,
+            "learning_rate_schedule": {
+                "type": "ReduceLROnPlateau",
+                "factor": args.lr_factor,
+                "patience": args.lr_patience,
+                "min_learning_rate": args.min_learning_rate,
+            },
             "label_smoothing": args.label_smoothing,
             "seed": args.seed,
             "oversampling": args.oversampling,
@@ -222,8 +234,18 @@ def main():
     tracker = BestCheckpoint(
         output_checkpoint, initial["loss"], args.patience, args.min_delta
     )
+    lr_scheduler = tf.keras.callbacks.ReduceLROnPlateau(
+        monitor="val_loss",
+        factor=args.lr_factor,
+        patience=args.lr_patience,
+        min_lr=args.min_learning_rate,
+        mode="min",
+    )
     history = model.fit(
-        train_data, validation_data=val_data, epochs=args.epochs, callbacks=[tracker]
+        train_data,
+        validation_data=val_data,
+        epochs=args.epochs,
+        callbacks=[tracker, lr_scheduler],
     )
     write_json(
         run_dir / "history.json",

@@ -12,13 +12,13 @@ An open model and training toolkit for identifying Pokémon in Pokétwo spawn im
 | Validation accuracy | 99.451% |
 | Validation top-5 accuracy | 99.870% |
 
-The published model files are:
+Model files:
 
 * Keras checkpoint: [`model/h5/best_model.h5`](model/h5/best_model.h5)
 * TensorFlow.js model: [`model/layers/`](model/layers/)
 * Ordered output labels: [`model/layers/labels.json`](model/layers/labels.json)
 
-Use the predicted class index to look up the name in the ordered `classes` array:
+Use the predicted class index to find the matching name in the ordered `classes` array:
 
 ```javascript
 const labels = require("./model/layers/labels.json").classes;
@@ -44,7 +44,7 @@ python training/predict.py path/to/image.jpg
 
 </details>
 
-This loads `model/h5/best_model.h5`, prints the predicted name and its score, for example `Pikachu (0.9821)`. Full-scene images are center-cropped automatically; images at or below 128 px are used as-is. Use `--checkpoint` and `--labels` to point at a different run. For use inside a bot, load the TF.js model from `model/layers/` instead.
+This loads `model/h5/best_model.h5`, prints the predicted name and its score, for example `Pikachu (0.9821)`. Full-scene images are center-cropped automatically, and images at or below 128 px are used as-is. Use `--checkpoint` and `--labels` to point at a different run. For use inside a bot, load the TF.js model from `model/layers/` instead.
 
 ## Train or update the model
 
@@ -59,24 +59,23 @@ See [`training/MODEL_ARTIFACTS.md`](training/MODEL_ARTIFACTS.md) for setup, opti
 
 ## Repository contents
 
-* `model/`: production checkpoints, TensorFlow.js files, and ordered labels
+* `model/`: checkpoints, TensorFlow.js files, and ordered labels
 * `datasets/`: versioned training and validation archives
-* `training/`: model definition, data loading, training, fine-tuning, and export code
-* [`technical_notes.md`](technical_notes.md): architecture choices and inference implementation details
+* `training/`: model definition, data-loading, training, fine-tuning, and export code
+* [`technical_notes.md`](technical_notes.md): architecture and inference details
 
 ## Known limitations
 
-* **Unreliable classes.** None of `Type`, `Type  Null`, `Galarian Articuno`, `Galarian Zapdos`, `MissingNo`, `Regieleki`, `Scolipede`, or `Xurkitree` appears in the validation split, so their accuracy is unmeasured. Training coverage is thin: 1 image each for Galarian Articuno, Galarian Zapdos, Regieleki, Scolipede, and Xurkitree; 7 for `Type  Null`; 30 for `MissingNo`; none for `Type`. Treat a top-1 result in this set as unknown and fall back to a hint.
-* **Type and Type Null.** The run-time missing-class lists show no `Type  Null` folder and a non-empty `Type` folder, while the published archives store the Type: Null images under `Type  Null` and contain no `Type` folder. The original folder layout is not preserved, and the archives hold 73,885 training images against 73,878 used for this run. Both output indexes are unreliable; do not merge them without retraining and re-exporting the model and labels as a set.
-* **Training coverage.** The published archives contain no `Type` images; `Type  Null` has 7 training and 1 validation image. Several classes have no validation images, so their accuracy is not measured.
-* **Preprocessing is part of the contract.** The model expects a 64x64 RGB squash with values divided by 255, and no normalization or saturation boost. For full-scene spawn screenshots, center-crop to 0.8x the shorter side (skip images at or below 128 px) before resizing. Without the crop, confidence drops sharply.
-* **Label order is fixed.** Always pair a checkpoint with the `labels.json` from the same run. Loaders should reject a model whose output count does not match the label count.
-* **Validation metrics are not a live guarantee.** 99.451% top-1 and 99.870% top-5 are from the run-time validation snapshot. Re-evaluating the published checkpoint on the published 17,659-image validation archive gives 99.445% top-1 and 99.870% top-5; the archive is not byte-identical to the run-time data. Live accuracy depends on framing, compression, and fallback behavior.
+* **Some classes are untested or poorly represented.** The validation split has no images for `Type`, `Type  Null`, `Galarian Articuno`, `Galarian Zapdos`, `MissingNo`, `Regieleki`, `Scolipede`, or `Xurkitree`, so accuracy for these labels is unknown. Training data is also sparse: there is 1 image each for Galarian Articuno, Galarian Zapdos, Regieleki, Scolipede, and Xurkitree; 7 for `Type  Null`; 30 for `MissingNo`; and none for `Type`. Treat predictions for these classes as uncertain and use a hint as a fallback.
+* **The `Type` and `Type  Null` labels are especially unreliable.** The run-time data had a non-empty `Type` folder and no `Type  Null` folder. The published archives instead put seven images in `Type  Null` and have no `Type` folder. The original folder layout was not preserved, and the archives contain 73,885 training images rather than the 73,878 used for the published run. Don't combine these labels without retraining and exporting the model and labels together.
+* **Preprocessing matters.** The model expects a 64x64 RGB image with pixel values divided by 255. Don't normalize the image or boost its saturation. For full-scene spawn screenshots, first center-crop to 0.8 times the shorter side, then resize; skip the crop for images with a shortest side of 128 px or less. Without this crop, confidence drops sharply.
+* **Keep labels paired with their checkpoint.** Always use the `labels.json` from the same run as the model. The number of model outputs should match the number of labels.
+* **Validation scores aren't a guarantee of live accuracy.** The run-time validation snapshot reports 99.451% top-1 and 99.870% top-5 accuracy. On the published 17,659-image validation archive, the checkpoint gets 99.445% top-1 and 99.870% top-5. That archive isn't an exact copy of the data used for the run, and real-world results depend on framing, compression, and fallback behavior.
 
 ## Use note
 
-Pokemon names and images belong to their owners. This repo is for research and for connecting a classifier to your own bot code. Autocatchers can break Discord or Poketwo rules, so use this at your own risk.
+Pokémon names and images belong to their respective owners. This repository is for research and for connecting a classifier to your own bot. Autocatchers may violate Discord's or Pokétwo's rules; use this project at your own risk.
 
 ## License
 
-See [LICENSE](LICENSE) for the code and model weights. Same terms as CatchTwo and Spammer. The dataset images are third-party content and are not covered by that license; see [Dataset license and usage](datasets.md#license-and-usage).
+See [LICENSE](LICENSE) for the code and model weights. Same terms as [CatchTwo](https://github.com/kyan0045/catchtwo) and [Spammer](https://github.com/kyan0045/spammer). The dataset images are third-party content and are not covered by that license; see [Dataset license and usage](datasets.md#license-and-usage).

@@ -1,6 +1,6 @@
 # Training
 
-The ordered labels define the output indexes for both training paths. Dataset archives and extraction steps are in [`../datasets.md`](../datasets.md).
+Both training scripts use the ordered labels to map model outputs to class names. See [`../datasets.md`](../datasets.md) for the dataset archives and extraction steps.
 
 ## Install
 
@@ -25,7 +25,7 @@ python -m pip install -r training/requirements.txt
 
 The tested Python 3.10 setup is TensorFlow 2.10.0 + NumPy 1.23.5. NumPy is pinned below 1.24 because `tensorflowjs==3.18.0` still uses `np.object`, which NumPy 1.24 removed. The standard requirements install a single TensorFlow distribution (`tensorflow==2.10.0`) and include the converter needed by `export.py`.
 
-For Windows DirectML, install `training/requirements-directml.txt` instead. The DirectML plugin requires `tensorflow-cpu==2.10.0`, so that environment omits `tensorflowjs` to avoid installing a second TensorFlow package. Use a separate standard environment to run `export.py`.
+On Windows with DirectML, install `training/requirements-directml.txt` instead. The plugin requires `tensorflow-cpu==2.10.0`; to avoid installing a second TensorFlow package, that requirements file leaves out `tensorflowjs`. Use a separate standard environment for `export.py`.
 
 ## Predict
 
@@ -33,7 +33,7 @@ For Windows DirectML, install `training/requirements-directml.txt` instead. The 
 python training/predict.py path\to\image.jpg
 ```
 
-Prints the predicted class name and score. Full-scene spawn images are center-cropped the same way as the runtime before resizing; already-framed images at or below 128 px are left uncropped. See `python training/predict.py --help` for `--checkpoint` and `--labels` overrides.
+The script prints the predicted class name and score. It center-crops full-scene spawn images before resizing, matching the runtime preprocessing. Images with a shortest side of 128 px or less are left uncropped. Run `python training/predict.py --help` to see how to set `--checkpoint` and `--labels`.
 
 ## Fine-tune
 
@@ -57,4 +57,4 @@ This initializes the architecture with random weights and uses the same ordered 
 python training/export.py training/models/runs/<run-id>
 ```
 
-The exporter writes a TF.js Layers model and ordered `labels.json` into the run's `tfjs/` directory. Copy those files to `model/layers/` to deploy. Load the model with `tf.loadLayersModel` and map its output index through `labels.json`.
+The exporter writes a TF.js Layers model and ordered `labels.json` to the run's `tfjs/` directory. To deploy it, copy the model files and `labels.json` to `model/layers/`. Load the model with `tf.loadLayersModel`, then use `labels.json` to map its output index to a class name.

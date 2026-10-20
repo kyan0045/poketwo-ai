@@ -1,24 +1,22 @@
-# Poketwo-AI Technical Notes
+# Technical notes
 
-An image classifier and runtime pipeline for identifying Pokémon spawns in Discord autocatchers.
+This document describes the image classifier and the TensorFlow.js inference code used to identify Pokémon spawns in Discord autocatchers.
 
 Dataset archives are documented in [`datasets.md`](datasets.md). Training, fine-tuning, and export instructions are in [`training/MODEL_ARTIFACTS.md`](training/MODEL_ARTIFACTS.md).
 
-## Part 1: Design Goals and Architecture Choices
+## Design and architecture
 
-### 1. Target Platforms and Constraints
-The runtime is designed to run across two main environments:
+### Target platforms and constraints
+The runtime is intended for two main environments:
 * **Desktop and servers**: Windows, Linux, and remote VPS servers.
 * **Mobile**: Android devices running via Termux.
 
 #### Running on Android / Termux
-Termux does not support GPU acceleration (CUDA or DirectML) or prebuilt `@tensorflow/tfjs-node` binaries. Inference therefore relies on CPU or WebAssembly (WASM) via TensorFlow.js.
+Termux doesn't support CUDA or DirectML, and prebuilt `@tensorflow/tfjs-node` binaries aren't available there. Inference runs on the CPU or through TensorFlow.js and WebAssembly (WASM) instead.
 
-Standard classification models like ResNet or standard MobileNet take 1.5 to 4 seconds per image on mobile CPUs and consume too much RAM. To achieve sub-100ms inference on low-power devices, the model minimizes parameter count, memory footprint, and operation count.
+Larger classifiers such as ResNet and standard MobileNet can be slow and memory-hungry on mobile CPUs. This model keeps its parameter count and number of operations low, with a target of under 100 ms per image on low-power devices. The repository doesn't include device benchmarks.
 
----
-
-### 2. Architecture Choices
+### Model structure
 
 ```
 [Raw Image]
@@ -26,21 +24,21 @@ Standard classification models like ResNet or standard MobileNet take 1.5 to 4 s
    ▼ (Sharp: center crop to 0.8x shorter side, resize to 64x64, strip alpha)
 [64x64x3 Tensor, values scaled to 0-1]
    │
-   ▼ (Standard Conv2D: Capture raw color and edge features)
+   ▼ (Conv2D: extract color and edge features)
 [Initial Feature Maps]
    │
-   ▼ (3x SeparableConv2D Blocks: High feature depth, low parameter count)
+   ▼ (3 SeparableConv2D blocks)
 [Aggregated Vectors]
    │
-   ▼ (GlobalAveragePooling2D + Dense + Dropout: Classify with low memory footprint)
+   ▼ (GlobalAveragePooling2D + Dense + Dropout)
 [1279 Class Probabilities]
 ```
 
-#### Input Dimensions ($64 \times 64 \times 3$)
-A standard $224 \times 224 \times 3$ image has 150,528 input values. Reducing inputs to $64 \times 64 \times 3$ (12,288 values) gives a 91.8% reduction in data size at the network entrance. Testing confirmed that 64x64 preserves enough color and silhouette detail to distinguish Pokémon species reliably.
+#### Input size ($64 \times 64 \times 3$)
+A $224 \times 224 \times 3$ image has 150,528 input values; a $64 \times 64 \times 3$ image has 12,288, about 91.8% fewer. In testing, 64x64 retained enough color and silhouette detail for this classification task.
 
 #### Separable Convolutions
-To reduce CPU load, the network replaces standard convolutions with depthwise separable convolutions (`SeparableConv2D`) after the first layer.
+After the first layer, the model uses depthwise separable convolutions (`SeparableConv2D`) instead of standard convolutions. This reduces the number of parameters and operations.
 
 * **Standard Conv2D**: $3 \times 3 \times 32 \times 64 = 18,432$ parameters.
 * **Separable Conv2D**: $(3 \times 3 \times 32) + (32 \times 64) = 2,336$ parameters.
@@ -48,17 +46,15 @@ To reduce CPU load, the network replaces standard convolutions with depthwise se
 This reduces parameters by 87.3% for this layer, lowering the model file size and the operations required per forward pass.
 
 #### Label Smoothing
-Discord spawn images often have compression artifacts, low contrast, or subtle regional differences (such as Alolan forms). Standard one-hot cross-entropy can lead to overconfidence on training data.
+Discord spawn images can have compression artifacts or low contrast, and some Pokémon have subtle regional differences. With ordinary one-hot targets, a model can become overconfident on its training data.
 
-The model uses label smoothing (0.1). Instead of targeting 1.0 for the true class and 0.0 for others, it targets 0.9 for the correct class and distributes 0.1 across the remaining classes. This regularizes predictions and improves accuracy on real Discord images.
+The model uses label smoothing of 0.1: the target is 0.9 for the correct class, with the remaining 0.1 distributed across the other classes. This discourages overconfident predictions; its effect depends on the data.
 
----
+## Model details
 
-## Part 2: Model Specifications
+The production model takes 64x64 RGB images and predicts 1,279 classes. Its reported validation accuracy is 99.451%, with 99.870% top-5 accuracy. See the [known limitations](README.md#known-limitations) for gaps in class coverage. The ordered class list is in [`model/layers/labels.json`](model/layers/labels.json); each array position corresponds to one model output.
 
-The production model accepts 64x64 RGB images and predicts 1,279 classes. Validation accuracy is 99.451%, with 99.870% top-5 accuracy. The ordered class list is provided in [`model/layers/labels.json`](model/layers/labels.json). Each array index matches the corresponding model output index.
-
-The network uses localized pooling and global average pooling to transition from spatial data to class predictions. It has 1,621,951 parameters.
+The network has 1,621,951 (1.6M) parameters. It uses max pooling to reduce spatial dimensions, then global average pooling and dense layers to produce class predictions.
 
 | Layer Type | Configuration | Output Shape | Feature Maps / Params |
 | :--- | :--- | :--- | :--- |
@@ -84,14 +80,12 @@ The network uses localized pooling and global average pooling to transition from
 | **Dropout** | Rate: 0.5 | `(None, 1024)` | Mitigates memorization during training |
 | **Dense (Output)** | 1279 units, Softmax | `(None, 1279)` | Output class probabilities |
 
----
+## TensorFlow.js inference
 
-## Part 3: Client Inference Runtime
+The Node.js inference pipeline in [CatchTwo](https://github.com/kyan0045/catchtwo) uses the following techniques to run TensorFlow.js outside the browser.
 
-In [CatchTwo](https://github.com/kyan0045/catchtwo), the Node.js inference pipeline uses several practical optimizations to run TensorFlow.js efficiently outside the browser.
-
-### 1. Lazy Loading AI Dependencies
-To avoid slow startup and keep memory low while idle, `@tensorflow/tfjs` and `sharp` load only when the first prediction is requested:
+### Lazy loading
+`@tensorflow/tfjs` and `sharp` are loaded the first time a prediction is requested, rather than at startup:
 
 ```javascript
 async function loadAiDependencies() {
@@ -106,10 +100,8 @@ async function loadAiDependencies() {
 }
 ```
 
----
-
-### 2. SeparableConv2D Deserialization Fix
-The Keras-to-TFJS converter includes layer properties (`kernel_initializer`, `kernel_regularizer`, and `kernel_constraint`) that the JavaScript `SeparableConv2D` implementation rejects. Cleaning these keys from the topology in memory allows the model to load without modifying the underlying files:
+### Loading `SeparableConv2D` layers
+The Keras-to-TFJS converter writes `kernel_initializer`, `kernel_regularizer`, and `kernel_constraint` properties that the JavaScript `SeparableConv2D` implementation rejects. Removing those keys from the in-memory topology lets the model load without changing the files on disk:
 
 ```javascript
 function scrubSeparableConv2D(config) {
@@ -125,10 +117,8 @@ function scrubSeparableConv2D(config) {
 }
 ```
 
----
-
-### 3. In-Memory Weight Shard Loading
-Reading individual weight shards directly into memory buffers avoids file locking and latency spikes on slower filesystems:
+### Loading weight shards
+The loader reads the weight shards into memory buffers before loading the model:
 
 ```javascript
 async function loadLayersModelFromDisk(modelDir) {
@@ -172,10 +162,8 @@ async function loadLayersModelFromDisk(modelDir) {
 }
 ```
 
----
-
-### 4. Image Preprocessing with Sharp
-Training resizes to 64x64 and divides by 255 (`training/data_loader.py`). The production fine-tune disabled augmentation, so it did **not** crop, normalize, or adjust saturation. Live Pokétwo spawns are full scenes rather than pre-framed crops, so the runtime reproduces the training framing with a center crop before resizing. Images at or below 128 px are left uncropped because they are already close to the training framing.
+### Image preprocessing
+Training resizes images to 64x64 and divides pixel values by 255 (`training/data_loader.py`). The production fine-tune used no augmentation, cropping, normalization, or saturation adjustment. Live Pokétwo spawns are full-scene images, so the runtime center-crops them before resizing. Images with a shortest side of 128 px or less are left uncropped.
 
 Do not add `.normalize()` or saturation changes. The production fine-tune disabled augmentation, and those transforms move live images away from the training distribution.
 
@@ -232,11 +220,9 @@ async function preprocessImage(url) {
 }
 ```
 
-The 0.8 crop ratio was tuned empirically on live full-scene spawns during development; the measurement logs are not included in this repository. Without the crop, full-scene spawn images squash the subject and confidence drops sharply. Treat it as part of the model contract when feeding screenshots, not as an optional enhancement.
+The 0.8 crop ratio was chosen by testing on live full-scene spawns. The measurement logs aren't included in this repository. Without the crop, resizing squashes the subject and confidence drops sharply. Apply the crop when passing full-scene screenshots to the model.
 
----
-
-### 5. Memory Management
+### Memory management
 To avoid memory leaks during continuous bot operation, intermediate tensor operations run inside `tf.tidy()`, and the input tensor is manually freed with `.dispose()` after inference:
 
 ```javascript
@@ -252,7 +238,7 @@ async function predict(url) {
     return argMaxTensor.dataSync()[0];
   });
 
-  // Explicit garbage collection of input tensor
+  // Release the input tensor
   imageTensor.dispose();
 
   const labels = require("../data/labels.json").classes;

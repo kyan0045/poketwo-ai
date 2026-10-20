@@ -53,10 +53,32 @@
     "accuracy": 0.9945070743560791,
     "top5_accuracy": 0.9986975789070129
   },
+  "optimizer": {
+    "type": "Adam",
+    "initial_learning_rate": 1e-05,
+    "final_learning_rate": 8.999999749903509e-07,
+    "note": "The checkpoint records a final learning rate of 1e-5 x 0.3^2, so the rate was reduced twice by a 0.3 factor during training."
+  },
+  "tfjs": {
+    "repository_path": "model/layers",
+    "format": "layers-model",
+    "source_checkpoint_sha256": "b49e33c3864bb4d3738ee49ef6aefa2f9a90499070b476c545d19ed38c02d2d0",
+    "quantization_bytes": 4,
+    "exact_weight_parity": true,
+    "verified_weight_count": 27,
+    "files": {
+      "model.json": "794ade988a7bfb2a3ae6b32f5abc11b45b7260524b2a6befa3e017eac165b35d",
+      "group1-shard1of2.bin": "bd914eae6621ce05176847027292824d4f21f50c200d93b34d1c659e819e3f52",
+      "group1-shard2of2.bin": "9bc8cb522e3b676f1306d4f8a8e985fece19fbe8630aeeccb6e3f86619bb00a7",
+      "labels.json": "6914c98cd7cb2c38e0a1f4532e3aaa24257af74585a16d9f1eb95b90f3a06851"
+    },
+    "note": "Hashes are for the deployed copy at model/layers. export.py records this block automatically for new runs."
+  },
   "dataset_archives": [
     "datasets/catchtwo-dataset-100-part1-v1.zip",
     "datasets/catchtwo-dataset-100-part2-v1.zip",
     "datasets/catchtwo-dataset-validation-v1.zip"
   ],
-  "dataset_note": "The published archive snapshot may differ from the original data used for this run."
+  "label_folder_note": "The missing_class lists describe the run-time folder layout: there was no \"Type  Null\" folder, and \"Type\" was non-empty. The published archives store the Type: Null images under \"Type  Null\" and have no \"Type\" folder, so the archive layout differs. The original layout is not preserved, and the archives contain 73,885 training images versus 73,878 in this manifest.",
+  "dataset_note": "The published archive snapshot may differ from the original data used for this run. The folder layout for Type and Type  Null differs from the run-time layout, and the archives contain 73,885 training images versus 73,878 in this manifest."
 }

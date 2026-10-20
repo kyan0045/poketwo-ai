@@ -23,8 +23,8 @@ Standard classification models like ResNet or standard MobileNet take 1.5 to 4 s
 ```
 [Raw Image]
    │
-   ▼ (Preprocessed via Sharp: Normalized, Saturation boosted, Stripped Alpha)
-[64x64x3 Tensor]
+   ▼ (Sharp: center crop to 0.8x shorter side, resize to 64x64, strip alpha)
+[64x64x3 Tensor, values scaled to 0-1]
    │
    ▼ (Standard Conv2D: Capture raw color and edge features)
 [Initial Feature Maps]
@@ -175,37 +175,64 @@ async function loadLayersModelFromDisk(modelDir) {
 ---
 
 ### 4. Image Preprocessing with Sharp
-Using `sharp` avoids browser canvas emulation and keeps image operations fast:
+Training resizes to 64x64 and divides by 255 (`training/data_loader.py`). The production fine-tune disabled augmentation, so it did **not** crop, normalize, or adjust saturation. Live Pokétwo spawns are full scenes rather than pre-framed crops, so the runtime reproduces the training framing with a center crop before resizing. Images at or below 128 px are left uncropped because they are already close to the training framing.
 
-* **Remove alpha channels**: `.removeAlpha()` fills transparent backgrounds with solid pixels to prevent input distortions.
-* **Normalize and saturate**: `.normalize().modulate({ saturation: 1.2 })` boosts contrast and saturation to highlight subtle differences between Pokémon variants.
+Do not add `.normalize()` or saturation changes. The production fine-tune disabled augmentation, and those transforms move live images away from the training distribution.
 
 ```javascript
-async function preprocessImage(url, optimizeImage = true) {
+const CENTER_CROP_MIN_SIDE = 128;
+const CENTER_CROP_RATIO = 0.8;
+
+function computeCenterCrop(width, height) {
+  if (!width || !height) return null;
+  const minSide = Math.min(width, height);
+  if (minSide <= CENTER_CROP_MIN_SIDE) return null;
+
+  const size = Math.round(minSide * CENTER_CROP_RATIO);
+  return {
+    left: Math.round((width - size) / 2),
+    top: Math.round((height - size) / 2),
+    width: size,
+    height: size,
+  };
+}
+
+async function preprocessImage(url) {
   const { tf, sharp } = await loadAiDependencies();
   const response = await axios({
     url,
     responseType: "arraybuffer",
+    timeout: 8000,
+    maxContentLength: 5 * 1024 * 1024,
+    maxBodyLength: 5 * 1024 * 1024,
+    validateStatus: (status) => status >= 200 && status < 300,
   });
 
-  let sharpInstance = sharp(Buffer.from(response.data));
-  if (optimizeImage) {
-    sharpInstance = sharpInstance.normalize().modulate({ saturation: 1.2 });
+  const contentType = response.headers?.["content-type"];
+  if (contentType && !contentType.startsWith("image/")) {
+    throw new Error(`Unexpected content-type: ${contentType}`);
   }
 
-  const imageBuffer = await sharpInstance
-    .resize(64, 64)
+  let pipeline = sharp(Buffer.from(response.data));
+  const metadata = await pipeline.metadata();
+  const crop = computeCenterCrop(metadata.width, metadata.height);
+  if (crop) pipeline = pipeline.extract(crop);
+
+  const imageBuffer = await pipeline
+    .resize(64, 64, { fit: "fill" })
     .removeAlpha()
     .raw()
     .toBuffer();
 
   return tf.tidy(() => {
     const tensor = tf.tensor3d(new Uint8Array(imageBuffer), [64, 64, 3], "int32");
-    const normalizedImage = tf.cast(tensor, "float32").div(tf.scalar(255.0));
-    return tf.expandDims(normalizedImage, 0); // [1, 64, 64, 3]
+    const scaled = tf.cast(tensor, "float32").div(tf.scalar(255.0));
+    return tf.expandDims(scaled, 0); // [1, 64, 64, 3]
   });
 }
 ```
+
+The 0.8 crop ratio was tuned empirically on live full-scene spawns during development; the measurement logs are not included in this repository. Without the crop, full-scene spawn images squash the subject and confidence drops sharply. Treat it as part of the model contract when feeding screenshots, not as an optional enhancement.
 
 ---
 
@@ -217,8 +244,7 @@ async function predict(url) {
   const { tf } = await loadAiDependencies();
   const activeModel = await getModel();
 
-  const startTime = Date.now();
-  const imageTensor = await preprocessImage(url, false);
+  const imageTensor = await preprocessImage(url);
 
   const predictedIndex = tf.tidy(() => {
     const prediction = activeModel.predict(imageTensor);
@@ -229,7 +255,7 @@ async function predict(url) {
   // Explicit garbage collection of input tensor
   imageTensor.dispose();
 
-  const labels = require("../model/layers/labels.json").classes;
+  const labels = require("../data/labels.json").classes;
   const name = labels[predictedIndex];
 
   return name;

@@ -40,4 +40,8 @@ Validation top-5 accuracy: 0.99870
 
 The validation split has no images for Galarian Articuno, Galarian Zapdos,
 MissingNo, Regieleki, Scolipede, Type Null, or Xurkitree. The training split
-has no images for Type Null.
+has no images for Type Null. These missing-class lists describe the run-time
+folders: there was no "Type Null" folder, and "Type" was non-empty. The
+published archives instead store the Type: Null images under "Type  Null" and
+have no "Type" folder, so the archive layout differs and the archive does not
+exactly reproduce this run (73,885 training images versus 73,878 here).

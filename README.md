@@ -85,4 +85,4 @@ Pokémon names and images belong to their respective owners. This repository is 
 
 ## License
 
-See [LICENSE](LICENSE) for the code and model weights. Same terms as [CatchTwo](https://github.com/kyan0045/catchtwo) and [Spammer](https://github.com/kyan0045/spammer). The dataset images are third-party content and are not covered by that license; see [Dataset license and usage](datasets.md#license-and-usage).
+See [LICENSE](LICENSE) for the code and model weights. The dataset images are third-party content and are not covered by that license; see [Dataset license and usage](datasets.md#license-and-usage).

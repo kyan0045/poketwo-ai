@@ -4,7 +4,12 @@ __pycache__/
 
 .venv/
 venv/
+.venv-dml/
 
+datasets/catchtwo-dataset-1303/
+datasets/catchtwo-dataset-validation-1303/
+datasets/catchtwo-dataset-v2/
+datasets/catchtwo-dataset-validation-v2/
 datasets/catchtwo-dataset-100/
 datasets/catchtwo-dataset-validation/
 .ruff_cache/

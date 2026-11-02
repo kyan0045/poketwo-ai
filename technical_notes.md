@@ -31,7 +31,7 @@ Larger classifiers such as ResNet and standard MobileNet can be slow and memory-
 [Aggregated Vectors]
    │
    ▼ (GlobalAveragePooling2D + Dense + Dropout)
-[1279 Class Probabilities]
+[1303 Class Probabilities]
 ```
 
 #### Input size ($64 \times 64 \times 3$)
@@ -52,9 +52,9 @@ The model uses label smoothing of 0.1: the target is 0.9 for the correct class, 
 
 ## Model details
 
-The production model takes 64x64 RGB images and predicts 1,279 classes. Its reported validation accuracy is 99.451%, with 99.870% top-5 accuracy. See the [known limitations](README.md#known-limitations) for gaps in class coverage. The ordered class list is in [`model/layers/labels.json`](model/layers/labels.json); each array position corresponds to one model output.
+The production model takes 64x64 RGB images and predicts 1,303 classes. Its reported validation accuracy is 99.8847% top-1 and 100% top-5 on the cleaned 26,014-image audit; the original 26,060-image split scored 99.7199% top-1 and 99.9156% top-5. The ordered class list is in [`model/layers/labels.json`](model/layers/labels.json); each array position corresponds to one model output.
 
-The network has 1,621,951 (1.6M) parameters. It uses max pooling to reduce spatial dimensions, then global average pooling and dense layers to produce class predictions.
+The network has 1,646,551 (1.6M) parameters. It uses max pooling to reduce spatial dimensions, then global average pooling and dense layers to produce class predictions.
 
 | Layer Type | Configuration | Output Shape | Feature Maps / Params |
 | :--- | :--- | :--- | :--- |
@@ -78,7 +78,7 @@ The network has 1,621,951 (1.6M) parameters. It uses max pooling to reduce spati
 | **GlobalAveragePooling2D**| None | `(None, 256)` | Flatten feature maps to a 256-D vector |
 | **Dense** | 1024 units, Relu, With Bias | `(None, 1024)` | High-level classification mapping |
 | **Dropout** | Rate: 0.5 | `(None, 1024)` | Mitigates memorization during training |
-| **Dense (Output)** | 1279 units, Softmax | `(None, 1279)` | Output class probabilities |
+| **Dense (Output)** | 1303 units, Softmax | `(None, 1303)` | Output class probabilities |
 
 ## TensorFlow.js inference
 
@@ -163,9 +163,9 @@ async function loadLayersModelFromDisk(modelDir) {
 ```
 
 ### Image preprocessing
-Training resizes images to 64x64 and divides pixel values by 255 (`training/data_loader.py`). The production fine-tune used no augmentation, cropping, normalization, or saturation adjustment. Live Pokétwo spawns are full-scene images, so the runtime center-crops them before resizing. Images with a shortest side of 128 px or less are left uncropped.
+Training resizes images to 64x64 and divides pixel values by 255 (`training/data_loader.py`). The from-scratch run used augmentation and oversampling; the accuracy fine-tune that produced the shipped checkpoint used neither. Live Pokétwo spawns are full-scene images, so the runtime center-crops them before resizing. Images with a shortest side of 128 px or less are left uncropped.
 
-Do not add `.normalize()` or saturation changes. The production fine-tune disabled augmentation, and those transforms move live images away from the training distribution.
+Do not add `.normalize()` or extra saturation changes. The shipped checkpoint was selected on images without those transforms, and adding them at inference moves live images away from the evaluation distribution.
 
 ```javascript
 const CENTER_CROP_MIN_SIDE = 128;

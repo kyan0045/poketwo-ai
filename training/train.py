@@ -21,11 +21,13 @@ DEFAULT_LABELS = (
     SCRIPT_DIR
     / "models"
     / "runs"
-    / "20260723T122145Z-sepconv-1279-real-ft"
+    / "20261102T141243Z-sepconv-accuracy-ft"
     / "labels.json"
 )
-DEFAULT_TRAIN_DIR = SCRIPT_DIR.parent / "datasets" / "catchtwo-dataset-100"
-DEFAULT_VALIDATION_DIR = SCRIPT_DIR.parent / "datasets" / "catchtwo-dataset-validation"
+DEFAULT_TRAIN_DIR = SCRIPT_DIR.parent / "datasets" / "catchtwo-dataset-1303"
+DEFAULT_VALIDATION_DIR = (
+    SCRIPT_DIR.parent / "datasets" / "catchtwo-dataset-validation-1303"
+)
 DEFAULT_RUNS_DIR = SCRIPT_DIR / "models" / "runs"
 
 

@@ -19,10 +19,12 @@ from model_registry import (
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 DEFAULT_PARENT_RUN = (
-    SCRIPT_DIR / "models" / "runs" / "20260723T122145Z-sepconv-1279-real-ft"
+    SCRIPT_DIR / "models" / "runs" / "20261102T141243Z-sepconv-accuracy-ft"
 )
-DEFAULT_TRAIN_DIR = SCRIPT_DIR.parent / "datasets" / "catchtwo-dataset-100"
-DEFAULT_VALIDATION_DIR = SCRIPT_DIR.parent / "datasets" / "catchtwo-dataset-validation"
+DEFAULT_TRAIN_DIR = SCRIPT_DIR.parent / "datasets" / "catchtwo-dataset-1303"
+DEFAULT_VALIDATION_DIR = (
+    SCRIPT_DIR.parent / "datasets" / "catchtwo-dataset-validation-1303"
+)
 DEFAULT_RUNS_DIR = SCRIPT_DIR / "models" / "runs"
 
 
@@ -30,7 +32,7 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description=(
             "Fine-tune the published model. Defaults match the production run "
-            "20260723T122145Z-sepconv-1279-real-ft."
+            "20261102T141243Z-sepconv-accuracy-ft."
         )
     )
     parser.add_argument("--parent-run", type=Path, default=DEFAULT_PARENT_RUN)
@@ -179,7 +181,7 @@ def main():
     initial = model.evaluate(val_data, verbose=1, return_dict=True)
 
     run_id = args.run_id or datetime.now(timezone.utc).strftime(
-        "%Y%m%dT%H%M%SZ-sepconv-1279-ft"
+        "%Y%m%dT%H%M%SZ-sepconv-1303-ft"
     )
     run_dir = args.runs_dir.resolve() / run_id
     run_dir.mkdir(parents=True, exist_ok=False)

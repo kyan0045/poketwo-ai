@@ -41,7 +41,7 @@ The script prints the predicted class name and score. It center-crops full-scene
 python training/fine_tune.py
 ```
 
-After extracting the archives as described in `datasets.md`, the script uses the included checkpoint and dataset folders by default. Override paths and training options with `--help`. The defaults match the published run: 12 epochs, batch size 128, learning rate `1e-5` reduced by `ReduceLROnPlateau` (factor `0.3`, patience `4`, minimum `1e-6`), label smoothing `0.1`, no augmentation, and no oversampling. Only the final separable convolution and the hidden Dense layer are trainable; the output Dense and BatchNormalization layers stay frozen. Pass `--augmentation` or `--oversampling` to opt in. New runs write `best.h5`, `labels.json`, `manifest.json`, and `history.json` under `training/models/runs/<run-id>/`; the published run ships the first three.
+After extracting the archives as described in `datasets.md`, the script fine-tunes the shipped run and uses the 1,303-class dataset folders by default. Override paths and training options with `--help`. The defaults use 12 epochs, batch size 128, learning rate `1e-5` reduced by `ReduceLROnPlateau` (factor `0.3`, patience `4`, minimum `1e-6`), label smoothing `0.1`, no augmentation, and no oversampling. Only the final separable convolution and the hidden Dense layer are trainable; the output Dense and BatchNormalization layers stay frozen. Pass `--augmentation` or `--oversampling` to opt in. The shipped checkpoint came from a five-epoch run of this script that selected epoch 3 by validation accuracy. New runs write `best.h5`, `labels.json`, `manifest.json`, and `history.json` under `training/models/runs/<run-id>/`; the published runs ship all four.
 
 ## Train from scratch
 
@@ -57,4 +57,4 @@ This initializes the architecture with random weights and uses the same ordered 
 python training/export.py training/models/runs/<run-id>
 ```
 
-The exporter writes a TF.js Layers model and ordered `labels.json` to the run's `tfjs/` directory. To deploy it, copy the model files and `labels.json` to `model/layers/`. Load the model with `tf.loadLayersModel`, then use `labels.json` to map its output index to a class name.
+The exporter writes a TF.js Layers model and ordered `labels.json` to the run's `tfjs/` directory. Unquantized exports fail if any exported weight differs from the checkpoint, and the exporter also checks that the output count matches the label count. The shipped `model/layers` files were produced this way. To deploy an export, copy the model files and `labels.json` to `model/layers/`. Load the model with `tf.loadLayersModel`, then use `labels.json` to map its output index to a class name.

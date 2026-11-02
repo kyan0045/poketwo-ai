@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "run_id": "20261102T141243Z-sepconv-accuracy-ft",
+  "kind": "accuracy_selected_fine_tune",
+  "status": "completed",
+  "created_at": "2026-11-02T14:12:49.690092+00:00",
+  "parent_run": "20261102T123826Z-sepconv-train",
+  "parent_checkpoint_sha256": "ae104846f5e4b33eb32a9184a465ed21fa82f49390662c8c3ea19af145d8b2cf",
+  "checkpoint": "best.h5",
+  "labels": "labels.json",
+  "labels_sha256": "6caa06331d93ca73906674658de677154f32fcd948a35fb0d3961c2f29066100",
+  "class_count": 1303,
+  "train_directory": "catchtwo-dataset-v2",
+  "validation_directory": "catchtwo-dataset-validation-v2",
+  "train_image_count": 130374,
+  "validation_image_count": 26060,
+  "missing_train_classes": [],
+  "missing_validation_classes": [],
+  "hyperparameters": {
+    "epochs": 5,
+    "batch_size": 128,
+    "learning_rate": 1e-05,
+    "label_smoothing": 0.1,
+    "oversampling": false,
+    "augmentation": false,
+    "checkpoint_monitor": "val_accuracy",
+    "seed": 20260723
+  },
+  "initial_validation": {
+    "loss": 1.1090126037597656,
+    "accuracy": 0.9967383146286011,
+    "top5_accuracy": 0.9991942048072815
+  },
+  "tensorflow_version": "2.10.0",
+  "completed_at": "2026-11-02T14:15:22.681474+00:00",
+  "checkpoint_sha256": "dc56ec49054b0f0aa9502015e0381d108c646f899f6ad9f02436108252b4951b",
+  "selected_fine_tune_epoch": 3,
+  "selection_monitor": "val_accuracy",
+  "best_validation": {
+    "loss": 1.1010662317276,
+    "accuracy": 0.997198760509491,
+    "top5_accuracy": 0.9991558194160461
+  },
+  "tfjs": {
+    "directory": "tfjs",
+    "format": "layers-model",
+    "source_checkpoint_sha256": "dc56ec49054b0f0aa9502015e0381d108c646f899f6ad9f02436108252b4951b",
+    "quantization_bytes": 4,
+    "exact_weight_parity": true,
+    "verified_weight_count": 27,
+    "exported_at": "2026-11-02T15:07:35.126449+00:00",
+    "tensorflow_version": "2.10.0",
+    "files": {
+      "group1-shard1of2.bin": "cc12c8bc58080d35546132765df65bbc5089fabb43b2eb333399d5849c69758e",
+      "group1-shard2of2.bin": "f31548090ac917dd6691c80a7932ef418053971dc2920cd4cb4a5ae9ca9da705",
+      "labels.json": "b0f2def7bc81c134f429f30a2ad92e8de9ea3c305a3650dde2b445a402f27ffa",
+      "model.json": "4723680b53f25a6f9312d24650a96c95d0ef3da3826e8c33f4a64ddb4bb8b724"
+    }
+  }
+}

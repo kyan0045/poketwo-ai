@@ -88,7 +88,9 @@ Temperature scaling fitted on a 5,000-image training holdout:
 | Baseline | 0.650 | 1.016 | 99.8196% | 99.9231% |
 | Compact | 0.548 | 0.538 | 99.8081% | 99.8347% |
 
-At matched coverage the compact model is 0.0884 pp behind on accepted accuracy. Applying `T = 0.538` keeps the existing `0.5` threshold meaningful without changing it.
+At matched coverage the compact model is 0.0884 pp behind on accepted accuracy.
+
+**Recommended deployment:** scale the compact logits by `T = 0.538` and keep the existing `0.5` floor. That gives 99.81% coverage at 99.83% accepted accuracy, matching the baseline coverage. If temperature scaling is not possible, lower the floor to `0.25` for 99.83% coverage at 99.80% accepted accuracy. Keeping `0.5` without scaling is the high-precision option: 97.92% coverage at 99.98% accepted accuracy.
 
 ## Runtime
 

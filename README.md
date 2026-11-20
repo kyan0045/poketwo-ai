@@ -21,8 +21,6 @@ Model files:
 * TensorFlow.js model: [`model/layers/`](model/layers/)
 * Ordered output labels: [`model/layers/labels.json`](model/layers/labels.json)
 
-The previous 1,279-class release, including its checkpoint, TensorFlow.js files, and ordered labels, is on the `20260723T122145Z-sepconv-1279-real-ft` branch.
-
 Use the predicted class index to find the matching name in the ordered `classes` array:
 
 ```javascript
@@ -72,12 +70,11 @@ See [`training/MODEL_ARTIFACTS.md`](training/MODEL_ARTIFACTS.md) for setup, opti
 
 ## Known limitations
 
-* **The class set changed from the 1,279-class model.** This release adds 26 classes (13 Halloween 2026 forms, 8 Minior cores, and 5 alternate forms) and removes `Type` and `Beta Sentret`. Output indexes differ from the previous model, so use this repository's `labels.json` with this checkpoint.
 * **Form names can be reduced to the base species.** Pokétwo accepts `Arceus`, `Silvally`, `Alcremie`, `Toxtricity`, `Dudunsparce`, `Maushold` and every `Unown` letter under their base name, so a consumer can map those form predictions to the base name and still catch the spawn. `Unown` needs a prefix match because `"Unown A"` does not end with `"Unown"`. Confirm base-name acceptance on a live spawn before relying on it.
 * **Finizen and Palafin are hard to separate.** The zero form and Finizen differ mainly by a small chest mark that is mostly lost at 64x64, and the pair remains the largest group of raw top-1 errors. Skip or defer the catch when these two are the top predictions rather than guessing.
 * **Preprocessing matters.** The model expects a 64x64 RGB image with pixel values divided by 255. Don't normalize the image or boost its saturation. For full-scene spawn screenshots, first center-crop to 0.8 times the shorter side, then resize; skip the crop for images with a shortest side of 128 px or less. Without this crop, confidence drops sharply.
 * **Keep labels paired with their checkpoint.** Always use the `labels.json` from the same run as the model. The number of model outputs should match the number of labels.
-* **Validation scores aren't a guarantee of live accuracy.** The shipped compact run reports 99.7813% top-1 and 100% top-5 on the 26,060-image archive. With the extended catch-name mapping, top-1 is 99.9271%. The previous release scored 99.8810% exact and 99.9463% mapped. Real-world results depend on framing, compression, and fallback behavior.
+* **Validation scores aren't a guarantee of live accuracy.** The shipped compact run reports 99.7813% top-1 and 100% top-5 on the 26,060-image archive. With the extended catch-name mapping, top-1 is 99.9271%. The previous release scored 99.8810% exact and 99.9463% mapped. The compact model is less confident at a 0.5 floor, so apply `T = 0.538` to its probabilities or use a 0.25 floor; see the benchmark. Real-world results depend on framing, compression, and fallback behavior.
 
 ## Use note
 

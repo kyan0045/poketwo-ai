@@ -23,7 +23,6 @@ def create_model(class_count):
             layers.Activation("relu"),
             layers.MaxPooling2D(2),
             layers.GlobalAveragePooling2D(),
-            layers.Dense(1024, activation="relu"),
             layers.Dropout(0.5),
             layers.Dense(class_count, activation="softmax"),
         ]

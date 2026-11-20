@@ -107,7 +107,7 @@ The fine-tune selected epoch 3 of 5 by validation accuracy.
 af1a9e5627e3fefa40923499464e2fb21c2a3865cde4d3a4fcbfc09055cb28a2  catchtwo-dataset-1303-part1.zip
 fbde9e71ea3b15fd4529b614fe0432df90663bf4afd70f26eeaccea128b4e9c8  catchtwo-dataset-1303-part2.zip
 159d3cc7783525951e15684536cffedb34d27eddff841cfd766ca7709ccb575b  catchtwo-dataset-1303-part3.zip
-a3fbd66f6b93d02fbb1be50f730877dee08458d0e8153f3685b8caf65df9812b  catchtwo-dataset-validation-1303.zip
+eb5cefee10055545e1775b36491899f023916e083a5ccb6259cb6eeb4f5e4a63  catchtwo-dataset-validation-1303.zip
 ```
 
 ## License and usage

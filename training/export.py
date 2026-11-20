@@ -30,7 +30,15 @@ def parse_args():
         help="Run directory containing manifest.json, labels, and an H5 checkpoint",
     )
     parser.add_argument("--quantization-bytes", type=int, choices=(1, 2))
-    return parser.parse_args()
+    parser.add_argument(
+        "--quantize-float16",
+        action="store_true",
+        help="Store weights as float16. Used for the published compact model.",
+    )
+    args = parser.parse_args()
+    if args.quantize_float16 and args.quantization_bytes:
+        parser.error("use either --quantize-float16 or --quantization-bytes")
+    return args
 
 
 def converter_path():
@@ -115,9 +123,16 @@ def main():
         "--input_format=keras",
         "--output_format=tfjs_layers_model",
     ]
-    if args.quantization_bytes:
-        command.append(f"--quantization_bytes={args.quantization_bytes}")
+    # --quantize_float16 takes an optional value, so it must come after the
+    # positional paths or argparse consumes the checkpoint path as its value.
+    quantization_flag = None
+    if args.quantize_float16:
+        quantization_flag = "--quantize_float16"
+    elif args.quantization_bytes:
+        quantization_flag = f"--quantization_bytes={args.quantization_bytes}"
     command.extend([os.fspath(checkpoint), os.fspath(temporary_output)])
+    if quantization_flag:
+        command.append(quantization_flag)
 
     try:
         result = subprocess.run(command, capture_output=True, text=True)
@@ -144,7 +159,7 @@ def main():
                 config.pop("kernel_constraint", None)
         write_json(temporary_output / "model.json", model_json)
         verified_weights = None
-        if not args.quantization_bytes:
+        if not args.quantization_bytes and not args.quantize_float16:
             verified_weights = verify_unquantized_weights(
                 model, model_json, temporary_output
             )
@@ -163,7 +178,10 @@ def main():
         "directory": "tfjs",
         "format": "layers-model",
         "source_checkpoint_sha256": sha256_file(checkpoint),
-        "quantization_bytes": args.quantization_bytes or 4,
+        "quantization": "float16" if args.quantize_float16 else None,
+        "quantization_bytes": 2
+        if args.quantize_float16
+        else (args.quantization_bytes or 4),
         "exact_weight_parity": verified_weights == len(model.weights)
         if verified_weights is not None
         else None,

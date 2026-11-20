@@ -8,19 +8,18 @@ An open model and training toolkit for identifying Pokémon in Pokétwo spawn im
 | :--- | :--- |
 | Input | 64x64 RGB image, values scaled to 0-1 |
 | Output | 1,303 classes |
-| Parameters | 1,646,551 |
-| Validation accuracy (cleaned audit) | 99.8847% |
-| Validation top-3 accuracy (cleaned audit) | 100% |
-| Validation top-5 accuracy (cleaned audit) | 100% |
+| Parameters | 382,679 |
+| Validation accuracy (26,060 archive) | 99.7813% |
+| Validation top-5 accuracy | 100% |
+| Validation accuracy, mapped catch names | 99.9271% |
 
-Validation figures come from the checkpoint audit on the cleaned 26,014-image split. Top-5 is 100% because top-3 is already 100%; top-2 was 99.9885%. The original 26,060-image split scored 99.7199% top-1 and 99.9156% top-5.
+Validation figures use the published 26,060-image archive. The previous release scored 99.8810% exact and 99.9463% mapped on the same archive. Mapped figures collapse Arceus, Silvally, Alcremie, Toxtricity, Dudunsparce, Maushold and Unown forms to their base catch names. See [`BENCHMARK_COMPACT.md`](BENCHMARK_COMPACT.md) for the full comparison.
 
 Model files:
 
 * Keras checkpoint: [`model/h5/best_model.h5`](model/h5/best_model.h5)
 * TensorFlow.js model: [`model/layers/`](model/layers/)
 * Ordered output labels: [`model/layers/labels.json`](model/layers/labels.json)
-* Training run: [`training/models/runs/20261102T141243Z-sepconv-accuracy-ft`](training/models/runs/20261102T141243Z-sepconv-accuracy-ft)
 
 The previous 1,279-class release, including its checkpoint, TensorFlow.js files, and ordered labels, is on the `20260723T122145Z-sepconv-1279-real-ft` branch.
 
@@ -68,16 +67,17 @@ See [`training/MODEL_ARTIFACTS.md`](training/MODEL_ARTIFACTS.md) for setup, opti
 * `model/`: checkpoints, TensorFlow.js files, and ordered labels
 * `datasets/`: versioned training and validation archives
 * `training/`: model definition, data-loading, training, fine-tuning, and export code
+* [`BENCHMARK_COMPACT.md`](BENCHMARK_COMPACT.md): compact model accuracy, calibration, and runtime comparison
 * [`technical_notes.md`](technical_notes.md): architecture and inference details
 
 ## Known limitations
 
 * **The class set changed from the 1,279-class model.** This release adds 26 classes (13 Halloween 2026 forms, 8 Minior cores, and 5 alternate forms) and removes `Type` and `Beta Sentret`. Output indexes differ from the previous model, so use this repository's `labels.json` with this checkpoint.
-* **Form names can be reduced to the base species.** Pokétwo accepts `Arceus` and `Silvally` without their form prefix, so a consumer can map those form predictions to the base name and still catch the spawn.
-* **Finizen and Palafin are hard to separate.** The zero form and Finizen differ mainly by a small chest mark that is mostly lost at 64x64. 13 of the 30 remaining top-1 audit errors are this pair, at about 0.51 confidence. Skip or defer the catch when these two are the top predictions rather than guessing.
+* **Form names can be reduced to the base species.** Pokétwo accepts `Arceus`, `Silvally`, `Alcremie`, `Toxtricity`, `Dudunsparce`, `Maushold` and every `Unown` letter under their base name, so a consumer can map those form predictions to the base name and still catch the spawn. `Unown` needs a prefix match because `"Unown A"` does not end with `"Unown"`. Confirm base-name acceptance on a live spawn before relying on it.
+* **Finizen and Palafin are hard to separate.** The zero form and Finizen differ mainly by a small chest mark that is mostly lost at 64x64, and the pair remains the largest group of raw top-1 errors. Skip or defer the catch when these two are the top predictions rather than guessing.
 * **Preprocessing matters.** The model expects a 64x64 RGB image with pixel values divided by 255. Don't normalize the image or boost its saturation. For full-scene spawn screenshots, first center-crop to 0.8 times the shorter side, then resize; skip the crop for images with a shortest side of 128 px or less. Without this crop, confidence drops sharply.
 * **Keep labels paired with their checkpoint.** Always use the `labels.json` from the same run as the model. The number of model outputs should match the number of labels.
-* **Validation scores aren't a guarantee of live accuracy.** The shipped run reports 99.7199% top-1 and 99.9156% top-5 accuracy on the original 26,060-image validation split. A later manual cleanup removed 46 mislabeled images; on the cleaned 26,014-image set the checkpoint scored 99.8847% top-1, 99.9885% top-2, and 100% top-3. The cleaned set is held out from training, but it is a subset of the validation split used to select the shipped epoch, and the removals were guided by model failures, so the audit can still be optimistic. The published validation archive contains fresh renders in place of the removed images. Real-world results depend on framing, compression, and fallback behavior.
+* **Validation scores aren't a guarantee of live accuracy.** The shipped compact run reports 99.7813% top-1 and 100% top-5 on the 26,060-image archive. With the extended catch-name mapping, top-1 is 99.9271%. The previous release scored 99.8810% exact and 99.9463% mapped. Real-world results depend on framing, compression, and fallback behavior.
 
 ## Use note
 

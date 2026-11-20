@@ -30,7 +30,7 @@ Larger classifiers such as ResNet and standard MobileNet can be slow and memory-
    ▼ (3 SeparableConv2D blocks)
 [Aggregated Vectors]
    │
-   ▼ (GlobalAveragePooling2D + Dense + Dropout)
+   ▼ (GlobalAveragePooling2D + Dropout + Dense)
 [1303 Class Probabilities]
 ```
 
@@ -52,9 +52,9 @@ The model uses label smoothing of 0.1: the target is 0.9 for the correct class, 
 
 ## Model details
 
-The production model takes 64x64 RGB images and predicts 1,303 classes. Its reported validation accuracy is 99.8847% top-1 and 100% top-5 on the cleaned 26,014-image audit; the original 26,060-image split scored 99.7199% top-1 and 99.9156% top-5. The ordered class list is in [`model/layers/labels.json`](model/layers/labels.json); each array position corresponds to one model output.
+The production model takes 64x64 RGB images and predicts 1,303 classes. On the 26,060-image published archive it scores 99.7813% top-1 and 100% top-5. Collapsing supported form families to base catch names raises top-1 to 99.9271%. The earlier release used a larger head and reported 99.8810% exact and 99.9463% mapped on the same archive. The ordered class list is in [`model/layers/labels.json`](model/layers/labels.json); each array position corresponds to one model output.
 
-The network has 1,646,551 (1.6M) parameters. It uses max pooling to reduce spatial dimensions, then global average pooling and dense layers to produce class predictions.
+The network has 382,679 parameters: 47,808 in the convolutional trunk and 334,871 in the classifier. It uses max pooling to reduce spatial dimensions, then global average pooling, dropout, and a single dense layer to produce class predictions. Removing the intermediate hidden layer cuts parameters by 76.8% and compute by about 10%.
 
 | Layer Type | Configuration | Output Shape | Feature Maps / Params |
 | :--- | :--- | :--- | :--- |
@@ -76,9 +76,8 @@ The network has 1,646,551 (1.6M) parameters. It uses max pooling to reduce spati
 | **Activation** | ReLU | `(None, 8, 8, 256)` | Non-linearity |
 | **MaxPooling2D** | 2x2 window, Stride 2 | `(None, 4, 4, 256)` | Final spatial resolution |
 | **GlobalAveragePooling2D**| None | `(None, 256)` | Flatten feature maps to a 256-D vector |
-| **Dense** | 1024 units, Relu, With Bias | `(None, 1024)` | High-level classification mapping |
-| **Dropout** | Rate: 0.5 | `(None, 1024)` | Mitigates memorization during training |
-| **Dense (Output)** | 1303 units, Softmax | `(None, 1303)` | Output class probabilities |
+| **Dropout** | Rate: 0.5 | `(None, 256)` | Mitigates memorization before the classifier |
+| **Dense (Output)** | 1303 units, Softmax, With Bias | `(None, 1303)` | Output class probabilities (334,871 parameters) |
 
 ## TensorFlow.js inference
 

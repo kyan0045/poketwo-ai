@@ -41,7 +41,9 @@ The script prints the predicted class name and score. It center-crops full-scene
 python training/fine_tune.py
 ```
 
-After extracting the archives as described in `datasets.md`, the script fine-tunes the shipped run and uses the 1,303-class dataset folders by default. Override paths and training options with `--help`. The defaults use 12 epochs, batch size 128, learning rate `1e-5` reduced by `ReduceLROnPlateau` (factor `0.3`, patience `4`, minimum `1e-6`), label smoothing `0.1`, no augmentation, and no oversampling. Only the final separable convolution and the hidden Dense layer are trainable; the output Dense and BatchNormalization layers stay frozen. Pass `--augmentation` or `--oversampling` to opt in. The shipped checkpoint came from a five-epoch run of this script that selected epoch 3 by validation accuracy. New runs write `best.h5`, `labels.json`, `manifest.json`, and `history.json` under `training/models/runs/<run-id>/`; the published runs ship all four.
+After extracting the archives as described in `datasets.md`, the script builds the compact `GAP -> Dropout -> Dense(1303)` model (382,679 parameters), copies the convolutional trunk from the parent run, and fine-tunes every layer end to end. The published compact run used a two-phase schedule: three head-only epochs at `1e-3` with the trunk frozen, then eight end-to-end epochs at `2e-4` with `ReduceLROnPlateau` (factor `0.3`, patience `2`, minimum `1e-6`). Batch size is 128 and label smoothing is `0.1`. Augmentation is available with `--augmentation` but is off for the published run; the earlier augmented run scored lower on validation. Oversampling is off because the v2 split is balanced at 100 or more images per class. Override paths and training options with `--help`, including `--augmentation`, `--head-epochs`, and `--learning-rate`.
+
+New runs write `best.h5`, `labels.json`, `manifest.json`, and `history.json` under `training/models/runs/<run-id>/`. The manifest records the architecture name, parameter count, parent checkpoint hash, and trainable layers.
 
 ## Train from scratch
 
@@ -49,12 +51,12 @@ After extracting the archives as described in `datasets.md`, the script fine-tun
 python training/train.py
 ```
 
-This initializes the architecture with random weights and uses the same ordered labels. Set `--labels` to a new ordered label file when adding classes.
+This initializes the compact architecture with random weights and uses the same ordered labels. Set `--labels` to a new ordered label file when adding classes. Fine-tuning from the published checkpoint is faster and reproduces the published accuracy.
 
 ## Export
 
 ```powershell
-python training/export.py training/models/runs/<run-id>
+python training/export.py training/models/runs/<run-id> --quantize-float16
 ```
 
-The exporter writes a TF.js Layers model and ordered `labels.json` to the run's `tfjs/` directory. Unquantized exports fail if any exported weight differs from the checkpoint, and the exporter also checks that the output count matches the label count. The shipped `model/layers` files were produced this way. To deploy an export, copy the model files and `labels.json` to `model/layers/`. Load the model with `tf.loadLayersModel`, then use `labels.json` to map its output index to a class name.
+The exporter writes a TF.js Layers model and ordered `labels.json` to the run's `tfjs/` directory. `--quantize-float16` stores weights as float16, which keeps the compact shard at about 0.75 MB. Without a quantization flag the exporter fails if any exported weight differs from the checkpoint, and it always checks that the output count matches the label count. The published `model/layers` files were produced with `--quantize-float16`. To deploy an export, copy the model files and `labels.json` to `model/layers/`. Load the model with `tf.loadLayersModel`, then use `labels.json` to map its output index to a class name.
